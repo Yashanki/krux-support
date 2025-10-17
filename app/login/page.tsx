@@ -1,6 +1,19 @@
 "use client";
+
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+
+const schema = z.object({
+  identifier: z
+    .string()
+    .min(3, "Please enter at least 3 characters")
+    .trim(),
+});
+
+type FormData = z.infer<typeof schema>;
 
 const mockUsers = {
   customers: [
@@ -16,9 +29,15 @@ const mockUsers = {
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<"customer" | "agent">("customer");
-  const [input, setInput] = useState("");
 
-  const handleLogin = () => {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormData>({ resolver: zodResolver(schema) });
+
+  const onSubmit = (data: FormData) => {
+    const input = data.identifier;
     if (mode === "customer") {
       const user = mockUsers.customers.find((u) => u.phone === input);
       if (user) {
@@ -43,6 +62,7 @@ export default function LoginPage() {
 
         <div className="flex justify-center gap-2 mb-4">
           <button
+            type="button"
             onClick={() => setMode("customer")}
             className={`px-3 py-1 rounded ${
               mode === "customer" ? "bg-blue-600 text-white" : "bg-gray-200"
@@ -51,6 +71,7 @@ export default function LoginPage() {
             Customer
           </button>
           <button
+            type="button"
             onClick={() => setMode("agent")}
             className={`px-3 py-1 rounded ${
               mode === "agent" ? "bg-green-600 text-white" : "bg-gray-200"
@@ -60,20 +81,23 @@ export default function LoginPage() {
           </button>
         </div>
 
-        <input
-          type="text"
-          placeholder={mode === "customer" ? "Enter phone number" : "Enter username"}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          className="border w-full p-2 mb-4 rounded"
-        />
-
-        <button
-          onClick={handleLogin}
-          className="bg-blue-600 text-white w-full py-2 rounded hover:bg-blue-700"
-        >
-          Login
-        </button>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <input
+            {...register("identifier")}
+            type="text"
+            placeholder={mode === "customer" ? "Enter phone number" : "Enter username"}
+            className="border w-full p-2 mb-1 rounded"
+          />
+          {errors.identifier && (
+            <p className="text-red-500 text-sm mb-2">{errors.identifier.message}</p>
+          )}
+          <button
+            type="submit"
+            className="bg-blue-600 text-white w-full py-2 rounded hover:bg-blue-700"
+          >
+            Login
+          </button>
+        </form>
       </div>
     </main>
   );

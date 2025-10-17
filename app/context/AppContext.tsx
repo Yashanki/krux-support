@@ -51,7 +51,6 @@ const AppContext = createContext<{
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  // Load user & tickets from localStorage on first render
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     const storedTickets = localStorage.getItem("tickets");

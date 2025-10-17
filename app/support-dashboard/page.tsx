@@ -15,13 +15,11 @@ export default function SupportDashboard() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [active, setActive] = useState<Ticket | null>(null);
 
-  // 🔹 Auth check
   useEffect(() => {
     const user = localStorage.getItem("user");
     if (!user) router.push("/login");
   }, [router]);
 
-  // 🔹 Load tickets
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("tickets") || "[]");
     setTickets(saved);

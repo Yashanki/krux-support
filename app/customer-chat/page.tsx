@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
-// ✅ NEW: import our Context
 import { useAppContext } from "../context/AppContext";
 
 type Message = {
@@ -15,7 +14,6 @@ type Message = {
 export default function CustomerChat() {
   const router = useRouter();
 
-  // ✅ NEW: access global state & dispatcher
   const { state, dispatch } = useAppContext();
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -23,7 +21,6 @@ export default function CustomerChat() {
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
-  // ✅ Auth Check (now uses context)
   useEffect(() => {
     if (!state.user) {
       const stored = localStorage.getItem("user");
@@ -32,18 +29,15 @@ export default function CustomerChat() {
     }
   }, [router, state.user, dispatch]);
 
-  // ✅ Scroll to bottom every time a message arrives
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // ✅ Load old chat (if any)
   useEffect(() => {
     const old = localStorage.getItem("chat_history");
     if (old) setMessages(JSON.parse(old));
   }, []);
 
-  // ✅ sendMessage (adds typing indicator)
   const sendMessage = () => {
     if (!input.trim()) return;
 
@@ -58,7 +52,6 @@ export default function CustomerChat() {
     localStorage.setItem("chat_history", JSON.stringify(newMessages));
     setInput("");
 
-    // 🔹 Show typing indicator for ~0.7s
     setIsTyping(true);
     setTimeout(() => {
       handleBotReply(userMsg.text, newMessages);
@@ -66,20 +59,16 @@ export default function CustomerChat() {
     }, 700);
   };
 
-  // ✅ Enhanced bot logic with ticket creation & status
   const handleBotReply = (query: string, prevMsgs: Message[]) => {
     let reply = "";
     const lower = query.toLowerCase();
 
-    // loan help
     if (lower.includes("loan"))
       reply =
         "We offer Business, Personal and MSME loans. Would you like to start an application?";
-    // document requirements
     else if (lower.includes("document"))
       reply =
         "For most loans you'll need PAN, Aadhaar, bank statement and income proof.";
-    // check status
     else if (lower.includes("status")) {
       const tickets = state.tickets || JSON.parse(localStorage.getItem("tickets") || "[]");
       const user = state.user || JSON.parse(localStorage.getItem("user") || "{}");
@@ -94,7 +83,6 @@ export default function CustomerChat() {
         reply = `Your latest ticket (${latest.id}) is currently *${latest.status}*.\nCreated on ${latest.createdAt}.`;
       }
     }
-    // escalate to human agent
     else if (lower.includes("human") || lower.includes("agent")) {
       const user = state.user || JSON.parse(localStorage.getItem("user") || "{}");
       const existing = state.tickets || JSON.parse(localStorage.getItem("tickets") || "[]");
@@ -107,14 +95,12 @@ export default function CustomerChat() {
         messages: prevMsgs,
       };
 
-      // ✅ Save ticket globally and locally
       const updatedTickets = [...existing, newTicket];
       localStorage.setItem("tickets", JSON.stringify(updatedTickets));
       dispatch({ type: "SET_TICKETS", payload: updatedTickets });
 
       reply = `Sure! I’ve created a support ticket for you.\n📄 Ticket ID: ${newTicket.id}\nAn agent will reach out soon.`;
     }
-    // default fallback
     else {
       reply =
         "I'm here to assist with loans, documents, or application status. Please type your query.";
@@ -160,10 +146,17 @@ export default function CustomerChat() {
           </div>
         ))}
 
-        {/* ✅ NEW: Typing Indicator */}
         {isTyping && (
-          <div className="text-sm text-gray-500 italic ml-2">Bot is typing...</div>
+          <div className="flex items-center space-x-1 text-gray-500 italic ml-2">
+            <span className="text-sm">Bot is typing</span>
+            <div className="typing-dots flex space-x-1">
+              <span>•</span>
+              <span>•</span>
+              <span>•</span>
+            </div>
+          </div>
         )}
+
 
         <div ref={chatEndRef}></div>
       </div>

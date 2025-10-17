@@ -1,0 +1,80 @@
+"use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+const mockUsers = {
+  customers: [
+    { phone: "+919876543210", name: "Rahul Sharma" },
+    { phone: "+919876543211", name: "Priya Patel" },
+  ],
+  agents: [
+    { username: "amit.kumar", role: "Support Agent" },
+    { username: "sneha.singh", role: "Senior Agent" },
+  ],
+};
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [mode, setMode] = useState<"customer" | "agent">("customer");
+  const [input, setInput] = useState("");
+
+  const handleLogin = () => {
+    if (mode === "customer") {
+      const user = mockUsers.customers.find((u) => u.phone === input);
+      if (user) {
+        localStorage.setItem("user", JSON.stringify({ ...user, role: "customer" }));
+        router.push("/customer-chat");
+      } else alert("Customer not found!");
+    } else {
+      const user = mockUsers.agents.find((u) => u.username === input);
+      if (user) {
+        localStorage.setItem("user", JSON.stringify({ ...user, role: "agent" }));
+        router.push("/support-dashboard");
+      } else alert("Agent not found!");
+    }
+  };
+
+  return (
+    <main className="flex flex-col items-center justify-center h-screen bg-gray-50">
+      <div className="bg-white p-6 rounded-lg shadow-md w-80">
+        <h1 className="text-2xl font-bold text-center mb-4 text-blue-700">
+          {mode === "customer" ? "Customer Login" : "Agent Login"}
+        </h1>
+
+        <div className="flex justify-center gap-2 mb-4">
+          <button
+            onClick={() => setMode("customer")}
+            className={`px-3 py-1 rounded ${
+              mode === "customer" ? "bg-blue-600 text-white" : "bg-gray-200"
+            }`}
+          >
+            Customer
+          </button>
+          <button
+            onClick={() => setMode("agent")}
+            className={`px-3 py-1 rounded ${
+              mode === "agent" ? "bg-green-600 text-white" : "bg-gray-200"
+            }`}
+          >
+            Agent
+          </button>
+        </div>
+
+        <input
+          type="text"
+          placeholder={mode === "customer" ? "Enter phone number" : "Enter username"}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          className="border w-full p-2 mb-4 rounded"
+        />
+
+        <button
+          onClick={handleLogin}
+          className="bg-blue-600 text-white w-full py-2 rounded hover:bg-blue-700"
+        >
+          Login
+        </button>
+      </div>
+    </main>
+  );
+}

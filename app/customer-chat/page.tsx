@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { formatMessageTimestamp, getDateSeparator, isSameDay } from "../utils/timestampUtils";
 import { useAppContext } from "../context/AppContext";
 
 type Message = {
@@ -36,7 +37,22 @@ export default function CustomerChat() {
     const chatKey = `chat_history_${state.user.phone}`;
     const storedMessages = localStorage.getItem(chatKey);
     if (storedMessages) {
-      setMessages(JSON.parse(storedMessages));
+      const parsedMessages = JSON.parse(storedMessages);
+      
+      // Check if messages have old timestamp format and clear them
+      const hasOldFormat = parsedMessages.some((msg: any) => 
+        typeof msg.time === 'string' && 
+        !msg.time.includes('T') && 
+        !msg.time.includes('Z')
+      );
+      
+      if (hasOldFormat) {
+        // Clear old format messages and start fresh
+        localStorage.removeItem(chatKey);
+        setMessages([]);
+      } else {
+        setMessages(parsedMessages);
+      }
     }
   }, [state.user?.phone]);
 
@@ -51,7 +67,7 @@ export default function CustomerChat() {
     const userMsg: Message = {
       sender: "user",
       text: input,
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      time: new Date().toISOString(),
     };
 
     const newMessages = [...messages, userMsg];
@@ -105,7 +121,7 @@ export default function CustomerChat() {
     const botMsg: Message = {
       sender: "bot",
       text: reply,
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      time: new Date().toISOString(),
     };
 
     const updated = [...prevMsgs, botMsg];
@@ -149,20 +165,39 @@ export default function CustomerChat() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {messages.map((m, i) => (
-          <div key={i} className={`flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}>
-            <div
-              className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-2 rounded-2xl shadow whitespace-pre-line break-words ${
-                m.sender === "user"
-                  ? "bg-blue-500 text-white rounded-br-none"
-                  : "bg-white text-gray-800 rounded-bl-none"
-              }`}
-            >
-              {m.text}
-              <div className="text-[10px] text-gray-400 mt-1 text-right">{m.time}</div>
+        {messages.map((m, i) => {
+          // Check if we need to show a date separator
+          const showDateSeparator = i === 0 || !isSameDay(messages[i - 1].time, m.time);
+          const dateSeparator = showDateSeparator ? getDateSeparator(m.time) : null;
+          
+          return (
+            <div key={i}>
+              {dateSeparator && (
+                <div className="flex justify-center my-4">
+                  <div className="bg-gray-200 text-gray-600 text-xs px-3 py-1 rounded-full">
+                    {dateSeparator}
+                  </div>
+                </div>
+              )}
+              <div className={`flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}>
+                <div
+                  className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-2 rounded-2xl shadow whitespace-pre-line break-words ${
+                    m.sender === "user"
+                      ? "bg-blue-500 text-white rounded-br-none"
+                      : "bg-white text-gray-800 rounded-bl-none"
+                  }`}
+                >
+                  {m.text}
+                  <div className={`text-[10px] mt-1 text-right ${
+                    m.sender === "user" ? "text-blue-100" : "text-gray-400"
+                  }`}>
+                    {formatMessageTimestamp(m.time)}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {isTyping && (
           <div className="flex items-center space-x-1 text-gray-500 italic ml-2">
             <span className="text-sm">Bot is typing</span>

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatWhatsAppTimestamp, formatMessageTimestamp, getDateSeparator, isSameDay } from "../utils/timestampUtils";
 
 type Ticket = {
   id: string;
@@ -64,7 +65,7 @@ export default function SupportDashboard() {
                   {t.status}
                 </span>
               </div>
-              <div className="text-xs text-gray-500">{t.createdAt}</div>
+              <div className="text-xs text-gray-500">{formatWhatsAppTimestamp(t.createdAt)}</div>
             </div>
           ))
         )}
@@ -92,25 +93,44 @@ export default function SupportDashboard() {
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-2">
-              {active.messages.map((m, i) => (
-                <div
-                  key={i}
-                  className={`flex ${
-                    m.sender === "user" ? "justify-start" : "justify-end"
-                  }`}
-                >
-                  <div
-                    className={`px-3 py-2 rounded-lg max-w-sm ${
-                      m.sender === "user"
-                        ? "bg-gray-200 text-gray-800"
-                        : "bg-green-100 text-green-900"
-                    }`}
-                  >
-                    {m.text}
+            <div className="flex-1 overflow-y-auto space-y-2 p-4">
+              {active.messages.map((m, i) => {
+                // Check if we need to show a date separator
+                const showDateSeparator = i === 0 || !isSameDay(active.messages[i - 1].time, m.time);
+                const dateSeparator = showDateSeparator ? getDateSeparator(m.time) : null;
+                
+                return (
+                  <div key={i}>
+                    {dateSeparator && (
+                      <div className="flex justify-center my-4">
+                        <div className="bg-gray-200 text-gray-600 text-xs px-3 py-1 rounded-full">
+                          {dateSeparator}
+                        </div>
+                      </div>
+                    )}
+                    <div
+                      className={`flex ${
+                        m.sender === "user" ? "justify-start" : "justify-end"
+                      }`}
+                    >
+                      <div
+                        className={`px-3 py-2 rounded-lg max-w-sm ${
+                          m.sender === "user"
+                            ? "bg-gray-200 text-gray-800"
+                            : "bg-green-100 text-green-900"
+                        }`}
+                      >
+                        <div className="whitespace-pre-line">{m.text}</div>
+                        {m.time && (
+                          <div className="text-[10px] text-gray-500 mt-1 text-right">
+                            {formatMessageTimestamp(m.time)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}

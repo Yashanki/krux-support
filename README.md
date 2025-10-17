@@ -1,4 +1,4 @@
-# KRUX Finance – Customer Support System (Tech Intern Assessment)
+# KRUX Finance – Customer Support System
 
 Live Demo 👉 [https://krux-support.vercel.app](https://krux-support.vercel.app)
 
@@ -11,8 +11,8 @@ Live Demo 👉 [https://krux-support.vercel.app](https://krux-support.vercel.app
 - +919876543211 (Priya Patel)
 
 **Agents**
-- amit.kumar   
-- sneha.singh 
+- amit.kumar (Support Agent)  
+- sneha.singh (Senior Agent)
 
 ---
 

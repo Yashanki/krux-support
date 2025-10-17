@@ -68,8 +68,8 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex flex-col items-center justify-center h-screen bg-gray-50">
-      <div className="bg-white p-6 rounded-lg shadow-md w-80">
+    <main className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-4 py-6">
+      <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-sm">
         <h1 className="text-2xl font-bold text-center mb-4 text-blue-700">
           {mode === "customer" ? "Customer Login" : "Agent Login"}
         </h1>
@@ -100,7 +100,7 @@ export default function LoginPage() {
             {...register("identifier")}
             type="text"
             placeholder={mode === "customer" ? "Enter phone number" : "Enter username"}
-            className="border w-full p-2 mb-1 rounded"
+            className="border w-full p-3 mb-1 rounded"
           />
           {errors.identifier && (
             <p className="text-red-500 text-sm mb-2">{errors.identifier.message}</p>

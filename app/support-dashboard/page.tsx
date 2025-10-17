@@ -51,9 +51,13 @@ export default function SupportDashboard() {
   }
 
   return (
-    <main className="flex h-screen">
+    <main className="flex h-screen flex-col sm:flex-row">
       {/* Left: Ticket List */}
-      <div className="w-1/3 border-r bg-gray-50 p-4 overflow-y-auto">
+      <div
+        className={`border-r bg-gray-50 p-4 overflow-y-auto sm:w-1/3 w-full ${
+          active ? "hidden sm:block" : "block"
+        }`}
+      >
         <div className="flex justify-between items-center mb-3">
           <h2 className="text-xl font-bold text-green-700">Support Tickets</h2>
           <button
@@ -70,7 +74,7 @@ export default function SupportDashboard() {
             <div
               key={t.id}
               onClick={() => setActive(t)}
-              className={`p-3 mb-2 rounded cursor-pointer border ${
+              className={`p-4 mb-3 rounded cursor-pointer border transition ${
                 active?.id === t.id
                   ? "bg-green-100 border-green-400"
                   : "bg-white hover:bg-gray-100"
@@ -88,14 +92,18 @@ export default function SupportDashboard() {
                   {t.status}
                 </span>
               </div>
-              <div className="text-xs text-gray-500">{formatWhatsAppTimestamp(t.createdAt)}</div>
+              <div className="text-xs text-gray-500 mt-1">{formatWhatsAppTimestamp(t.createdAt)}</div>
             </div>
           ))
         )}
       </div>
 
       {/* Right: Active Ticket View */}
-      <div className="flex-1 p-6 flex flex-col">
+      <div
+        className={`flex-1 p-4 sm:p-6 flex flex-col ${
+          !active ? "hidden sm:flex" : "flex"
+        }`}
+      >
         {!active ? (
           <div className="text-gray-500 text-center mt-20">
             Select a ticket to view details
@@ -103,9 +111,17 @@ export default function SupportDashboard() {
         ) : (
           <>
             <div className="flex justify-between items-center border-b pb-2 mb-3">
-              <h3 className="text-lg font-semibold">
-                Chat with {active.customer.name}
-              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setActive(null)}
+                  className="sm:hidden text-blue-600 text-sm px-2 py-1 -ml-2"
+                >
+                  Back
+                </button>
+                <h3 className="text-lg font-semibold">
+                  Chat with {active.customer.name}
+                </h3>
+              </div>
               {active.status === "Open" && (
                 <button
                   onClick={() => resolveTicket(active.id)}
@@ -116,7 +132,7 @@ export default function SupportDashboard() {
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-2 p-4">
+            <div className="flex-1 overflow-y-auto space-y-2 p-2 sm:p-4">
               {active.messages.map((m, i) => {
                 // Check if we need to show a date separator
                 const showDateSeparator = i === 0 || !isSameDay(active.messages[i - 1].time, m.time);
@@ -137,7 +153,7 @@ export default function SupportDashboard() {
                       }`}
                     >
                       <div
-                        className={`px-3 py-2 rounded-lg max-w-sm ${
+                        className={`px-3 py-2 rounded-lg max-w-[80%] sm:max-w-sm ${
                           m.sender === "user"
                             ? "bg-gray-200 text-gray-800"
                             : "bg-green-100 text-green-900"

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatWhatsAppTimestamp, formatMessageTimestamp, getDateSeparator, isSameDay } from "../utils/timestampUtils";
+import { useAppContext } from "../context/AppContext";
 
 type Ticket = {
   id: string;
@@ -13,37 +14,59 @@ type Ticket = {
 
 export default function SupportDashboard() {
   const router = useRouter();
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const { state, updateTicketStatus, refreshAllTickets, logout } = useAppContext();
   const [active, setActive] = useState<Ticket | null>(null);
 
+  // Wait for app initialization and check authentication
   useEffect(() => {
-    const user = localStorage.getItem("user");
-    if (!user) router.push("/login");
-  }, [router]);
-
-  useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("tickets") || "[]");
-    setTickets(saved);
-  }, []);
+    if (!state.isInitialized) return;
+    
+    // Check if user is an agent
+    if (!state.user || state.user.role !== "agent") {
+      router.push("/login");
+      return;
+    }
+    
+    // Refresh tickets when dashboard loads
+    refreshAllTickets();
+  }, [state.isInitialized, state.user, router]);
 
   const resolveTicket = (id: string) => {
-    const updated = tickets.map((t) =>
-      t.id === id ? { ...t, status: "Resolved" } : t
-    );
-    setTickets(updated);
-    localStorage.setItem("tickets", JSON.stringify(updated));
+    updateTicketStatus(id, "Resolved");
     setActive(null);
   };
+
+  const handleLogout = () => {
+    logout();
+    router.push("/login");
+  };
+
+  // Show loading while app initializes
+  if (!state.isInitialized || state.isLoading) {
+    return (
+      <main className="flex items-center justify-center h-screen bg-gray-100">
+        <div className="text-lg">Loading...</div>
+      </main>
+    );
+  }
 
   return (
     <main className="flex h-screen">
       {/* Left: Ticket List */}
       <div className="w-1/3 border-r bg-gray-50 p-4 overflow-y-auto">
-        <h2 className="text-xl font-bold mb-3 text-green-700">Support Tickets</h2>
-        {tickets.length === 0 ? (
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-xl font-bold text-green-700">Support Tickets</h2>
+          <button
+            onClick={handleLogout}
+            className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+          >
+            Logout
+          </button>
+        </div>
+        {state.allTickets.length === 0 ? (
           <p className="text-gray-500">No tickets yet.</p>
         ) : (
-          tickets.map((t) => (
+          state.allTickets.map((t) => (
             <div
               key={t.id}
               onClick={() => setActive(t)}

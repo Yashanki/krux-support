@@ -13,7 +13,7 @@ type Message = {
 
 export default function CustomerChat() {
   const router = useRouter();
-  const { state, dispatch, logout } = useAppContext();
+  const { state, dispatch, logout, addTicket } = useAppContext();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -113,6 +113,10 @@ export default function CustomerChat() {
       const updatedTickets = [...existing, newTicket];
       localStorage.setItem(ticketsKey, JSON.stringify(updatedTickets));
       dispatch({ type: "SET_TICKETS", payload: updatedTickets });
+      
+      // Also add to global tickets for agents to see
+      addTicket(newTicket);
+      
       reply = `Sure! I've created a support ticket for you.\n📄 Ticket ID: ${newTicket.id}\nAn agent will reach out soon.`;
     } else {
       reply = "I'm here to assist with loans, documents, or application status. Please type your query.";

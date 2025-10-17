@@ -57,9 +57,9 @@ export default function LoginPage() {
     } else {
       const user = mockUsers.agents.find((u) => u.username === input);
       if (user) {
-        // For agents, still use the old method since they go to support dashboard
-        localStorage.clear();
-        localStorage.setItem("user", JSON.stringify({ ...user, role: "agent" }));
+        // For agents, use the AppContext loginUser method to preserve data
+        const userData = { ...user, role: "agent" };
+        loginUser(userData);
         router.push("/support-dashboard");
       } else {
         alert("Agent not found!");

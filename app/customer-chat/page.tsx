@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-
 import { useAppContext } from "../context/AppContext";
 
 type Message = {
@@ -13,33 +12,41 @@ type Message = {
 
 export default function CustomerChat() {
   const router = useRouter();
-
-  const { state, dispatch } = useAppContext();
+  const { state, dispatch, logout } = useAppContext();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
+  // Wait for app initialization and check authentication
   useEffect(() => {
-    if (!state.user) {
-      const stored = localStorage.getItem("user");
-      if (!stored) router.push("/login");
-      else dispatch({ type: "SET_USER", payload: JSON.parse(stored) });
+    if (!state.isInitialized) return;
+    
+    if (!state.user || !state.user.phone) {
+      router.push("/login");
+      return;
     }
-  }, [router, state.user, dispatch]);
+  }, [state.isInitialized, state.user, router]);
 
+  // Load chat history when user is available
+  useEffect(() => {
+    if (typeof window === "undefined" || !state.user?.phone) return;
+    
+    const chatKey = `chat_history_${state.user.phone}`;
+    const storedMessages = localStorage.getItem(chatKey);
+    if (storedMessages) {
+      setMessages(JSON.parse(storedMessages));
+    }
+  }, [state.user?.phone]);
+
+  // Scroll to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  useEffect(() => {
-    const old = localStorage.getItem("chat_history");
-    if (old) setMessages(JSON.parse(old));
-  }, []);
-
   const sendMessage = () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !state.user?.phone) return;
 
     const userMsg: Message = {
       sender: "user",
@@ -49,7 +56,9 @@ export default function CustomerChat() {
 
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
-    localStorage.setItem("chat_history", JSON.stringify(newMessages));
+    
+    const chatKey = `chat_history_${state.user.phone}`;
+    localStorage.setItem(chatKey, JSON.stringify(newMessages));
     setInput("");
 
     setIsTyping(true);
@@ -60,50 +69,37 @@ export default function CustomerChat() {
   };
 
   const handleBotReply = (query: string, prevMsgs: Message[]) => {
+    if (!state.user?.phone) return;
+    
     let reply = "";
     const lower = query.toLowerCase();
+    const ticketsKey = `tickets_${state.user.phone}`;
 
     if (lower.includes("loan"))
-      reply =
-        "We offer Business, Personal and MSME loans. Would you like to start an application?";
+      reply = "We offer Business, Personal and MSME loans. Would you like to start an application?";
     else if (lower.includes("document"))
-      reply =
-        "For most loans you'll need PAN, Aadhaar, bank statement and income proof.";
+      reply = "For most loans you'll need PAN, Aadhaar, bank statement and income proof.";
     else if (lower.includes("status")) {
-      const tickets = state.tickets || JSON.parse(localStorage.getItem("tickets") || "[]");
-      const user = state.user || JSON.parse(localStorage.getItem("user") || "{}");
-      const userTickets = tickets.filter(
-        (t: any) => t.customer?.phone === user.phone
-      );
-
-      if (userTickets.length === 0) {
-        reply = "You have no open tickets at the moment.";
-      } else {
-        const latest = userTickets[userTickets.length - 1];
-        reply = `Your latest ticket (${latest.id}) is currently *${latest.status}*.\nCreated on ${latest.createdAt}.`;
-      }
-    }
-    else if (lower.includes("human") || lower.includes("agent")) {
-      const user = state.user || JSON.parse(localStorage.getItem("user") || "{}");
-      const existing = state.tickets || JSON.parse(localStorage.getItem("tickets") || "[]");
-
+      const tickets = JSON.parse(localStorage.getItem(ticketsKey) || "[]");
+      const userTickets = tickets.filter((t: any) => t.customer?.phone === state.user.phone);
+      reply = userTickets.length
+        ? `Your latest ticket (${userTickets.at(-1).id}) is currently *${userTickets.at(-1).status}*.\nCreated on ${userTickets.at(-1).createdAt}.`
+        : "You have no open tickets at the moment.";
+    } else if (lower.includes("human") || lower.includes("agent")) {
+      const existing = JSON.parse(localStorage.getItem(ticketsKey) || "[]");
       const newTicket = {
         id: `TCKT-${Math.floor(1000 + Math.random() * 9000)}`,
-        customer: user,
+        customer: state.user,
         createdAt: new Date().toLocaleString(),
         status: "Open",
         messages: prevMsgs,
       };
-
       const updatedTickets = [...existing, newTicket];
-      localStorage.setItem("tickets", JSON.stringify(updatedTickets));
+      localStorage.setItem(ticketsKey, JSON.stringify(updatedTickets));
       dispatch({ type: "SET_TICKETS", payload: updatedTickets });
-
-      reply = `Sure! I’ve created a support ticket for you.\n📄 Ticket ID: ${newTicket.id}\nAn agent will reach out soon.`;
-    }
-    else {
-      reply =
-        "I'm here to assist with loans, documents, or application status. Please type your query.";
+      reply = `Sure! I've created a support ticket for you.\n📄 Ticket ID: ${newTicket.id}\nAn agent will reach out soon.`;
+    } else {
+      reply = "I'm here to assist with loans, documents, or application status. Please type your query.";
     }
 
     const botMsg: Message = {
@@ -114,38 +110,59 @@ export default function CustomerChat() {
 
     const updated = [...prevMsgs, botMsg];
     setMessages(updated);
-    localStorage.setItem("chat_history", JSON.stringify(updated));
+    const chatKey = `chat_history_${state.user.phone}`;
+    localStorage.setItem(chatKey, JSON.stringify(updated));
   };
+
+  const handleLogout = () => {
+    logout();
+    router.push("/login");
+  };
+
+  // Show loading while app initializes
+  if (!state.isInitialized || state.isLoading) {
+    return (
+      <main className="flex items-center justify-center h-screen bg-gray-100">
+        <div className="text-lg">Loading...</div>
+      </main>
+    );
+  }
+
+  // Don't render if no user (will redirect)
+  if (!state.user) {
+    return null;
+  }
 
   return (
     <main className="flex flex-col h-screen bg-gray-100">
-      {/* Header */}
-      <div className="bg-blue-600 text-white px-4 py-3 font-semibold text-lg">
-        KRUX Finance Chatbot
+      <div className="bg-blue-600 text-white px-4 py-3 font-semibold text-lg flex justify-between items-center">
+        <span>KRUX Finance Chatbot</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm">Welcome, {state.user.name}</span>
+          <button
+            onClick={handleLogout}
+            className="bg-red-500 hover:bg-red-600 px-3 py-1 rounded text-sm transition-colors"
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
-      {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.map((m, i) => (
-          <div
-            key={i}
-            className={`flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}
-          >
+          <div key={i} className={`flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}>
             <div
-              className={`max-w-xs px-4 py-2 rounded-2xl shadow whitespace-pre-line ${
+              className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-2 rounded-2xl shadow whitespace-pre-line break-words ${
                 m.sender === "user"
                   ? "bg-blue-500 text-white rounded-br-none"
                   : "bg-white text-gray-800 rounded-bl-none"
               }`}
             >
               {m.text}
-              <div className="text-[10px] text-gray-400 mt-1 text-right">
-                {m.time}
-              </div>
+              <div className="text-[10px] text-gray-400 mt-1 text-right">{m.time}</div>
             </div>
           </div>
         ))}
-
         {isTyping && (
           <div className="flex items-center space-x-1 text-gray-500 italic ml-2">
             <span className="text-sm">Bot is typing</span>
@@ -156,12 +173,9 @@ export default function CustomerChat() {
             </div>
           </div>
         )}
-
-
         <div ref={chatEndRef}></div>
       </div>
 
-      {/* Input Bar */}
       <div className="p-3 border-t bg-white flex gap-2">
         <input
           value={input}

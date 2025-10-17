@@ -5,6 +5,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAppContext } from "../context/AppContext";
 
 const schema = z.object({
   identifier: z
@@ -28,6 +29,7 @@ const mockUsers = {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { loginUser } = useAppContext();
   const [mode, setMode] = useState<"customer" | "agent">("customer");
 
   const {
@@ -37,19 +39,31 @@ export default function LoginPage() {
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
   const onSubmit = (data: FormData) => {
-    const input = data.identifier;
+    const input = data.identifier.trim();
+
     if (mode === "customer") {
       const user = mockUsers.customers.find((u) => u.phone === input);
       if (user) {
-        localStorage.setItem("user", JSON.stringify({ ...user, role: "customer" }));
+        const userData = { ...user, role: "customer" };
+        
+        // Use the AppContext loginUser method
+        loginUser(userData);
+        
+        // Navigate to chat page
         router.push("/customer-chat");
-      } else alert("Customer not found!");
+      } else {
+        alert("Customer not found!");
+      }
     } else {
       const user = mockUsers.agents.find((u) => u.username === input);
       if (user) {
+        // For agents, still use the old method since they go to support dashboard
+        localStorage.clear();
         localStorage.setItem("user", JSON.stringify({ ...user, role: "agent" }));
         router.push("/support-dashboard");
-      } else alert("Agent not found!");
+      } else {
+        alert("Agent not found!");
+      }
     }
   };
 

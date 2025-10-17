@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
+// ✅ NEW: import our Context
+import { useAppContext } from "../context/AppContext";
+
 type Message = {
   sender: "user" | "bot";
   text: string;
@@ -11,15 +14,23 @@ type Message = {
 
 export default function CustomerChat() {
   const router = useRouter();
+
+  // ✅ NEW: access global state & dispatcher
+  const { state, dispatch } = useAppContext();
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
-  // ✅ Auth Check
+  // ✅ Auth Check (now uses context)
   useEffect(() => {
-    const user = localStorage.getItem("user");
-    if (!user) router.push("/login");
-  }, [router]);
+    if (!state.user) {
+      const stored = localStorage.getItem("user");
+      if (!stored) router.push("/login");
+      else dispatch({ type: "SET_USER", payload: JSON.parse(stored) });
+    }
+  }, [router, state.user, dispatch]);
 
   // ✅ Scroll to bottom every time a message arrives
   useEffect(() => {
@@ -32,8 +43,10 @@ export default function CustomerChat() {
     if (old) setMessages(JSON.parse(old));
   }, []);
 
+  // ✅ sendMessage (adds typing indicator)
   const sendMessage = () => {
     if (!input.trim()) return;
+
     const userMsg: Message = {
       sender: "user",
       text: input,
@@ -45,8 +58,12 @@ export default function CustomerChat() {
     localStorage.setItem("chat_history", JSON.stringify(newMessages));
     setInput("");
 
-    // simulate bot typing delay
-    setTimeout(() => handleBotReply(userMsg.text, newMessages), 700);
+    // 🔹 Show typing indicator for ~0.7s
+    setIsTyping(true);
+    setTimeout(() => {
+      handleBotReply(userMsg.text, newMessages);
+      setIsTyping(false);
+    }, 700);
   };
 
   // ✅ Enhanced bot logic with ticket creation & status
@@ -64,8 +81,8 @@ export default function CustomerChat() {
         "For most loans you'll need PAN, Aadhaar, bank statement and income proof.";
     // check status
     else if (lower.includes("status")) {
-      const tickets = JSON.parse(localStorage.getItem("tickets") || "[]");
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const tickets = state.tickets || JSON.parse(localStorage.getItem("tickets") || "[]");
+      const user = state.user || JSON.parse(localStorage.getItem("user") || "{}");
       const userTickets = tickets.filter(
         (t: any) => t.customer?.phone === user.phone
       );
@@ -79,8 +96,8 @@ export default function CustomerChat() {
     }
     // escalate to human agent
     else if (lower.includes("human") || lower.includes("agent")) {
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
-      const existing = JSON.parse(localStorage.getItem("tickets") || "[]");
+      const user = state.user || JSON.parse(localStorage.getItem("user") || "{}");
+      const existing = state.tickets || JSON.parse(localStorage.getItem("tickets") || "[]");
 
       const newTicket = {
         id: `TCKT-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -90,7 +107,10 @@ export default function CustomerChat() {
         messages: prevMsgs,
       };
 
-      localStorage.setItem("tickets", JSON.stringify([...existing, newTicket]));
+      // ✅ Save ticket globally and locally
+      const updatedTickets = [...existing, newTicket];
+      localStorage.setItem("tickets", JSON.stringify(updatedTickets));
+      dispatch({ type: "SET_TICKETS", payload: updatedTickets });
 
       reply = `Sure! I’ve created a support ticket for you.\n📄 Ticket ID: ${newTicket.id}\nAn agent will reach out soon.`;
     }
@@ -139,6 +159,12 @@ export default function CustomerChat() {
             </div>
           </div>
         ))}
+
+        {/* ✅ NEW: Typing Indicator */}
+        {isTyping && (
+          <div className="text-sm text-gray-500 italic ml-2">Bot is typing...</div>
+        )}
+
         <div ref={chatEndRef}></div>
       </div>
 
